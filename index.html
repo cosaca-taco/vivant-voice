@@ -78,14 +78,13 @@
             <div class="favorite-list" id="favorite-list"></div>
         </section>
         <div class="settings">
-            <label class="setting">VOICEVOXの声<select id="voice-select" aria-label="VOICEVOXの声"></select></label>
+            <label class="setting">声の種類<select id="voice-select" aria-label="声の種類"></select></label>
             <label class="setting">話し方<select id="style-select" aria-label="話し方"><option value="dramatic" selected>ドラム風・特徴的</option><option value="soft">やさしく自然に</option><option value="quick">元気にはっきり</option></select></label>
         </div>
     </main>
     <div class="toast" id="toast" role="status"></div>
     <script>
         const synth = window.speechSynthesis;
-        const voicevoxApi = 'https://vivant-voice-engine-xxxvjmqptq-an.a.run.app';
         const input = document.getElementById('text-input');
         const status = document.getElementById('status');
         const voiceSelect = document.getElementById('voice-select');
@@ -93,7 +92,6 @@
         const favoritesKey = 'vivant-voice-favorites';
         const phrases = ['野崎さん、ありがとうございます！', 'これで準備は完璧です！', '薫先生、超かわいいですね！', '任せてください！', 'お疲れさまでした！', '了解しました。'];
         let voices = [];
-        let voicevoxSpeakers = [];
         let favorites = JSON.parse(localStorage.getItem(favoritesKey) || '[]');
 
         function renderPhrases() {
@@ -107,30 +105,15 @@
             if (!synth) return;
             voices = synth.getVoices().filter(voice => voice.lang.toLowerCase().startsWith('ja'));
             voiceSelect.innerHTML = voices.length ? voices.map((voice, index) => `<option value="${index}">${voice.name}</option>`).join('') : '<option>標準の日本語音声</option>';
-            const preferredVoice = voices.findIndex(voice => /kyoko|otoya|google|female|woman|haruka|nanami|mizuki/i.test(voice.name));
+            const preferredVoice = voices.findIndex(voice => /kyoko|google|female|woman|haruka|nanami|mizuki/i.test(voice.name));
             if (preferredVoice >= 0) voiceSelect.value = preferredVoice;
-        }
-        async function loadVoicevoxSpeakers() {
-            try {
-                const response = await fetch(`${voicevoxApi}/speakers`);
-                if (!response.ok) throw new Error('VOICEVOX API error');
-                const speakers = await response.json();
-                voicevoxSpeakers = speakers.flatMap(speaker => speaker.styles.filter(style => style.type === 'talk').map(style => ({ name: `${speaker.name} / ${style.name}`, id: style.id })));
-                voiceSelect.innerHTML = voicevoxSpeakers.map((speaker, index) => `<option value="${index}">${speaker.name}</option>`).join('');
-                const preferred = voicevoxSpeakers.findIndex(speaker => /雨晴はう|櫻歌ミコ|春歌ナナ|春日部つむぎ/.test(speaker.name));
-                if (preferred >= 0) voiceSelect.value = preferred;
-                status.textContent = 'VOICEVOX準備完了';
-            } catch (error) {
-                loadVoices();
-                status.textContent = 'ブラウザ音声';
-            }
         }
         function showToast(message) {
             const toast = document.getElementById('toast');
             toast.textContent = message; toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 1800);
         }
-        async function speakText() {
+        function speakText() {
             const text = input.value.trim();
             if (!text) { showToast('話してほしい言葉を入力してください'); input.focus(); return; }
             const speechStyle = {
@@ -138,33 +121,13 @@
                 soft: { pitch: 1.35, rate: 0.88 },
                 quick: { pitch: 1.55, rate: 1.02 }
             }[styleSelect.value];
-            if (voicevoxSpeakers.length) {
-                try {
-                    status.textContent = 'VOICEVOX生成中';
-                    if (synth) synth.cancel();
-                    const speaker = voicevoxSpeakers[voiceSelect.value] || voicevoxSpeakers[0];
-                    const queryResponse = await fetch(`${voicevoxApi}/audio_query?speaker=${speaker.id}&text=${encodeURIComponent(addDramaticPauses(text))}`, { method: 'POST' });
-                    if (!queryResponse.ok) throw new Error('audio query failed');
-                    const query = await queryResponse.json();
-                    query.speedScale = speechStyle.rate;
-                    query.pitchScale = (speechStyle.pitch - 1) * 0.35;
-                    query.intonationScale = styleSelect.value === 'dramatic' ? 1.25 : 1;
-                    const audioResponse = await fetch(`${voicevoxApi}/synthesis?speaker=${speaker.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(query) });
-                    if (!audioResponse.ok) throw new Error('synthesis failed');
-                    const audio = new Audio(URL.createObjectURL(await audioResponse.blob()));
-                    status.textContent = '再生中';
-                    audio.onended = () => { status.textContent = 'VOICEVOX準備完了'; };
-                    await audio.play();
-                    return;
-                } catch (error) { showToast('VOICEVOXに接続できないため標準音声で再生します'); }
-            }
             if (!synth) { showToast('このブラウザは音声再生に対応していません'); return; }
             synth.cancel();
             const utterance = new SpeechSynthesisUtterance(addDramaticPauses(text));
             utterance.lang = 'ja-JP'; utterance.pitch = speechStyle.pitch; utterance.rate = speechStyle.rate;
             if (voices[voiceSelect.value]) utterance.voice = voices[voiceSelect.value];
             utterance.onstart = () => { status.textContent = '再生中'; };
-            utterance.onend = () => { status.textContent = 'ブラウザ音声'; };
+            utterance.onend = () => { status.textContent = '準備完了'; };
             synth.speak(utterance);
         }
         function addDramaticPauses(text) {
@@ -184,7 +147,7 @@
         document.getElementById('speak-btn').addEventListener('click', speakText);
         document.getElementById('save-btn').addEventListener('click', saveFavorite);
         document.getElementById('clear-btn').addEventListener('click', () => { input.value = ''; updateCounter(); if (synth) synth.cancel(); status.textContent = '準備完了'; });
-        renderPhrases(); renderFavorites(); loadVoices(); loadVoicevoxSpeakers(); updateCounter();
+        renderPhrases(); renderFavorites(); loadVoices(); updateCounter();
         if (synth && synth.onvoiceschanged !== undefined) synth.onvoiceschanged = loadVoices;
     </script>
 </body>
