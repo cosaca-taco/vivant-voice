@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#17202b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>VIVANT Voice</title>
+    <style>
+        :root { --ink: #17202b; --muted: #66717b; --line: #dfe4e5; --paper: #f6f5f0; --cream: #fffdf8; --coral: #e86659; --yellow: #f6c85f; }
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; color: var(--ink); background: var(--paper); font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif; -webkit-user-select: none; }
+        button, textarea, select { font: inherit; }
+        button { cursor: pointer; }
+        .app { width: min(100%, 480px); min-height: 100vh; margin: auto; padding: 28px 20px 34px; position: relative; overflow: hidden; }
+        .app::before { content: ""; position: absolute; width: 260px; height: 260px; border-radius: 50%; background: var(--yellow); opacity: .22; right: -120px; top: -110px; }
+        header { position: relative; display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
+        .eyebrow { margin: 0 0 7px; color: var(--coral); font-size: 11px; font-weight: 800; letter-spacing: .17em; }
+        h1 { margin: 0; font-family: Georgia, serif; font-size: 30px; letter-spacing: .02em; }
+        .status { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
+        .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #48a879; }
+        .composer { position: relative; background: var(--cream); border: 1px solid var(--line); border-radius: 14px; padding: 18px; box-shadow: 0 12px 30px rgba(23, 32, 43, .07); }
+        .label { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; font-weight: 700; }
+        #text-input { display: block; width: 100%; min-height: 98px; margin: 10px 0 16px; padding: 0; border: 0; outline: 0; color: var(--ink); background: transparent; font-size: 19px; line-height: 1.7; resize: none; -webkit-user-select: text; }
+        #text-input::placeholder { color: #a6adb0; }
+        .composer-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .small-btn { border: 0; background: transparent; color: var(--muted); font-size: 12px; padding: 8px 0; }
+        .small-btn:hover { color: var(--ink); }
+        .speak-btn { display: inline-flex; align-items: center; gap: 9px; border: 0; border-radius: 9px; padding: 13px 18px; color: white; background: var(--coral); font-weight: 800; box-shadow: 0 5px 12px rgba(232, 102, 89, .24); transition: transform .15s, filter .15s; }
+        .speak-btn:hover { filter: brightness(.95); transform: translateY(-1px); }
+        .speak-btn:active { transform: translateY(1px); }
+        .speak-icon { display: grid; place-items: center; width: 19px; height: 19px; border: 2px solid currentColor; border-radius: 50%; font-size: 10px; }
+        section { margin-top: 28px; }
+        .section-heading { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+        h2 { margin: 0; font-size: 14px; }
+        .hint { color: var(--muted); font-size: 11px; }
+        .phrase-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+        .phrase { min-height: 58px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); background: rgba(255, 253, 248, .7); text-align: left; font-size: 13px; line-height: 1.45; transition: border-color .15s, background .15s; }
+        .phrase:hover { border-color: var(--coral); background: var(--cream); }
+        .phrase:active { transform: scale(.98); }
+        .favorites { border-top: 1px solid var(--line); }
+        .favorite-list { display: grid; gap: 8px; }
+        .favorite-item { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .favorite-text { flex: 1; min-width: 0; padding: 11px 12px; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--cream); text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+        .delete-favorite { flex: 0 0 28px; border: 0; color: #a6adb0; background: transparent; font-size: 18px; }
+        .empty { margin: 0; color: var(--muted); font-size: 12px; }
+        .settings { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 24px; padding-top: 17px; border-top: 1px solid var(--line); }
+        .setting { color: var(--muted); font-size: 11px; }
+        select { display: block; width: 100%; margin-top: 7px; padding: 8px 7px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: var(--cream); font-size: 12px; }
+        .toast { position: fixed; left: 50%; bottom: 22px; z-index: 2; padding: 10px 15px; border-radius: 20px; color: white; background: var(--ink); font-size: 12px; opacity: 0; transform: translate(-50%, 12px); pointer-events: none; transition: opacity .2s, transform .2s; }
+        .toast.show { opacity: 1; transform: translate(-50%, 0); }
+        @media (min-width: 600px) { body { display: grid; place-items: center; } .app { min-height: auto; padding-top: 38px; padding-bottom: 38px; } }
+    </style>
+</head>
+<body>
+    <main class="app">
+        <header>
+            <div><p class="eyebrow">VOICE DEVICE / 01</p><h1>VIVANT Voice</h1></div>
+            <span class="status" id="status">準備完了</span>
+        </header>
+        <div class="composer">
+            <div class="label"><span>話してほしい言葉</span><span id="counter">0 / 120</span></div>
+            <textarea id="text-input" maxlength="120" placeholder="ここに言葉を入力…" aria-label="話してほしい言葉"></textarea>
+            <div class="composer-actions">
+                <button class="small-btn" id="clear-btn" type="button">クリア</button>
+                <div>
+                    <button class="small-btn" id="save-btn" type="button">☆ お気に入りに保存</button>
+                    <button class="speak-btn" id="speak-btn" type="button"><span class="speak-icon">▶</span>話す</button>
+                </div>
+            </div>
+        </div>
+        <section>
+            <div class="section-heading"><h2>よく使う言葉</h2><span class="hint">タップで入力</span></div>
+            <div class="phrase-grid" id="phrase-grid"></div>
+        </section>
+        <section class="favorites">
+            <div class="section-heading"><h2>お気に入り</h2><span class="hint">この端末に保存</span></div>
+            <div class="favorite-list" id="favorite-list"></div>
+        </section>
+        <div class="settings">
+            <label class="setting">声の種類<select id="voice-select" aria-label="声の種類"></select></label>
+            <label class="setting">話す速さ<select id="rate-select" aria-label="話す速さ"><option value="0.78">ゆっくり</option><option value="0.88" selected>ふつう</option><option value="1.02">はやめ</option></select></label>
+        </div>
+    </main>
+    <div class="toast" id="toast" role="status"></div>
+    <script>
+        const synth = window.speechSynthesis;
+        const input = document.getElementById('text-input');
+        const status = document.getElementById('status');
+        const voiceSelect = document.getElementById('voice-select');
+        const favoritesKey = 'vivant-voice-favorites';
+        const phrases = ['野崎さん、ありがとうございます！', 'これで準備は完璧です！', '薫先生、超かわいいですね！', '任せてください！', 'お疲れさまでした！', '了解しました。'];
+        let voices = [];
+        let favorites = JSON.parse(localStorage.getItem(favoritesKey) || '[]');
+
+        function renderPhrases() {
+            document.getElementById('phrase-grid').innerHTML = phrases.map(text => `<button class="phrase" type="button" data-text="${text}">${text}</button>`).join('');
+        }
+        function renderFavorites() {
+            const list = document.getElementById('favorite-list');
+            list.innerHTML = favorites.length ? favorites.map((text, index) => `<div class="favorite-item"><button class="favorite-text" type="button" data-text="${text}">${text}</button><button class="delete-favorite" type="button" data-index="${index}" aria-label="${text}を削除">×</button></div>`).join('') : '<p class="empty">お気に入りはまだありません。よく使う言葉を保存できます。</p>';
+        }
+        function loadVoices() {
+            if (!synth) return;
+            voices = synth.getVoices().filter(voice => voice.lang.toLowerCase().startsWith('ja'));
+            voiceSelect.innerHTML = voices.length ? voices.map((voice, index) => `<option value="${index}">${voice.name}</option>`).join('') : '<option>標準の日本語音声</option>';
+        }
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message; toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 1800);
+        }
+        function speakText() {
+            const text = input.value.trim();
+            if (!text) { showToast('話してほしい言葉を入力してください'); input.focus(); return; }
+            if (!synth) { showToast('このブラウザは音声再生に対応していません'); return; }
+            synth.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ja-JP'; utterance.pitch = 1.42; utterance.rate = Number(document.getElementById('rate-select').value);
+            if (voices[voiceSelect.value]) utterance.voice = voices[voiceSelect.value];
+            utterance.onstart = () => { status.textContent = '再生中'; };
+            utterance.onend = () => { status.textContent = '準備完了'; };
+            synth.speak(utterance);
+        }
+        function saveFavorite() {
+            const text = input.value.trim();
+            if (!text) { showToast('保存する言葉を入力してください'); return; }
+            if (!favorites.includes(text)) { favorites.unshift(text); localStorage.setItem(favoritesKey, JSON.stringify(favorites)); renderFavorites(); showToast('お気に入りに保存しました'); }
+            else showToast('すでに保存されています');
+        }
+        document.getElementById('phrase-grid').addEventListener('click', event => { if (event.target.dataset.text) { input.value = event.target.dataset.text; updateCounter(); input.focus(); } });
+        document.getElementById('favorite-list').addEventListener('click', event => { if (event.target.dataset.index !== undefined) { favorites.splice(Number(event.target.dataset.index), 1); localStorage.setItem(favoritesKey, JSON.stringify(favorites)); renderFavorites(); } else if (event.target.dataset.text) { input.value = event.target.dataset.text; updateCounter(); input.focus(); } });
+        function updateCounter() { document.getElementById('counter').textContent = `${input.value.length} / 120`; }
+        input.addEventListener('input', updateCounter);
+        document.getElementById('speak-btn').addEventListener('click', speakText);
+        document.getElementById('save-btn').addEventListener('click', saveFavorite);
+        document.getElementById('clear-btn').addEventListener('click', () => { input.value = ''; updateCounter(); if (synth) synth.cancel(); status.textContent = '準備完了'; });
+        renderPhrases(); renderFavorites(); loadVoices(); updateCounter();
+        if (synth && synth.onvoiceschanged !== undefined) synth.onvoiceschanged = loadVoices;
+    </script>
+</body>
+</html>
