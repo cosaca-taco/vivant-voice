@@ -79,7 +79,7 @@
         </section>
         <div class="settings">
             <label class="setting">声の種類<select id="voice-select" aria-label="声の種類"></select></label>
-            <label class="setting">話す速さ<select id="rate-select" aria-label="話す速さ"><option value="0.78">ゆっくり</option><option value="0.88" selected>ふつう</option><option value="1.02">はやめ</option></select></label>
+            <label class="setting">話し方<select id="style-select" aria-label="話し方"><option value="dramatic" selected>ドラム風・特徴的</option><option value="soft">やさしく自然に</option><option value="quick">元気にはっきり</option></select></label>
         </div>
     </main>
     <div class="toast" id="toast" role="status"></div>
@@ -88,6 +88,7 @@
         const input = document.getElementById('text-input');
         const status = document.getElementById('status');
         const voiceSelect = document.getElementById('voice-select');
+        const styleSelect = document.getElementById('style-select');
         const favoritesKey = 'vivant-voice-favorites';
         const phrases = ['野崎さん、ありがとうございます！', 'これで準備は完璧です！', '薫先生、超かわいいですね！', '任せてください！', 'お疲れさまでした！', '了解しました。'];
         let voices = [];
@@ -104,6 +105,8 @@
             if (!synth) return;
             voices = synth.getVoices().filter(voice => voice.lang.toLowerCase().startsWith('ja'));
             voiceSelect.innerHTML = voices.length ? voices.map((voice, index) => `<option value="${index}">${voice.name}</option>`).join('') : '<option>標準の日本語音声</option>';
+            const preferredVoice = voices.findIndex(voice => /kyoko|otoya|google|female|woman|haruka|nanami|mizuki/i.test(voice.name));
+            if (preferredVoice >= 0) voiceSelect.value = preferredVoice;
         }
         function showToast(message) {
             const toast = document.getElementById('toast');
@@ -115,12 +118,21 @@
             if (!text) { showToast('話してほしい言葉を入力してください'); input.focus(); return; }
             if (!synth) { showToast('このブラウザは音声再生に対応していません'); return; }
             synth.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'ja-JP'; utterance.pitch = 1.42; utterance.rate = Number(document.getElementById('rate-select').value);
+            const utterance = new SpeechSynthesisUtterance(addDramaticPauses(text));
+            const speechStyle = {
+                dramatic: { pitch: 1.72, rate: 0.76 },
+                soft: { pitch: 1.35, rate: 0.88 },
+                quick: { pitch: 1.55, rate: 1.02 }
+            }[styleSelect.value];
+            utterance.lang = 'ja-JP'; utterance.pitch = speechStyle.pitch; utterance.rate = speechStyle.rate;
             if (voices[voiceSelect.value]) utterance.voice = voices[voiceSelect.value];
             utterance.onstart = () => { status.textContent = '再生中'; };
             utterance.onend = () => { status.textContent = '準備完了'; };
             synth.speak(utterance);
+        }
+        function addDramaticPauses(text) {
+            if (styleSelect.value !== 'dramatic') return text;
+            return text.replace(/！/g, '！……').replace(/。/g, '。……').replace(/、/g, '、');
         }
         function saveFavorite() {
             const text = input.value.trim();
