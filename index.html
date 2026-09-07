@@ -90,7 +90,16 @@
         const voiceSelect = document.getElementById('voice-select');
         const styleSelect = document.getElementById('style-select');
         const favoritesKey = 'vivant-voice-favorites';
-        const phrases = ['野崎さん、ありがとうございます！', 'これで準備は完璧です！', '薫先生、超かわいいですね！', '任せてください！', 'お疲れさまでした！', '了解しました。'];
+        const phrases = [
+                        'おはようございます！',
+                        '了解しました！',
+                        '任せてください！',
+                        '少々お待ちください。',
+                        '確認します。',
+                        'ありがとうございます！',
+                        'お疲れさまでした！',
+                        'また連絡します。'
+                        ];
         let voices = [];
         let favorites = JSON.parse(localStorage.getItem(favoritesKey) || '[]');
 
